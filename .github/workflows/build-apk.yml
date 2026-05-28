@@ -29,26 +29,19 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install dependencies
+      - name: Install Capacitor CLI
+        run: npm install -g @capacitor/cli
+
+      - name: Ensure dist directory exists
         run: |
-          npm install
-          npm install @capacitor/android
-
-      - name: Build web assets
-        run: npm run build
-
-      - name: List dist contents
-        run: ls -la dist/
-
-      - name: Copy index.html to dist
-        run: |
+          mkdir -p dist
           if [ ! -f dist/index.html ]; then
             cp index.html dist/
           fi
           ls -la dist/
 
       - name: Sync Capacitor Android
-        run: npx cap sync android
+        run: cap sync android
 
       - name: Build APK
         working-directory: ./android
