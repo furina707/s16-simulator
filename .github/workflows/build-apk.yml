@@ -3,20 +3,13 @@ name: Build Android APK
 on:
   push:
     branches: [main, master]
-    paths-ignore:
-      - "**.md"
-      - ".gitignore"
-  pull_request:
-    branches: [main, master]
   workflow_dispatch:
 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-latest
-    
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -29,38 +22,36 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      - name: Install Capacitor CLI
-        run: npm install -g @capacitor/cli
+      - name: Install dependencies
+        run: |
+          npm install
+          npm install @capacitor/core @capacitor/cli @capacitor/android
 
-      - name: Ensure dist directory exists
+      - name: Prepare web assets
         run: |
           mkdir -p dist
-          if [ ! -f dist/index.html ]; then
-            cp index.html dist/
-          fi
-          ls -la dist/
+          cp index.html dist/
+          cp -r public/* dist/ 2>/dev/null || true
 
-      - name: Sync Capacitor Android
-        run: cap sync android
+      - name: Sync Android
+        run: npx cap sync android
 
       - name: Build APK
-        working-directory: ./android
-        run: ./gradlew assembleDebug --stacktrace
+        working-directory: android
+        run: ./gradlew assembleDebug
 
-      - name: Upload APK artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: s16-simulator-apk
+          name: S16-Simulator-APK
           path: android/app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 30
 
       - name: Create Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v1
         with:
-          tag_name: latest
-          name: "S16模拟器 APK (自动构建)"
-          prerelease: true
+          tag_name: v${{ github.run_number }}
+          name: S16模拟器 APK v${{ github.run_number }}
           files: android/app/build/outputs/apk/debug/app-debug.apk
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
