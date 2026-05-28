@@ -22,7 +22,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
 
       - name: Setup Java
         uses: actions/setup-java@v4
@@ -31,7 +30,9 @@ jobs:
           distribution: 'temurin'
 
       - name: Install dependencies
-        run: npm ci
+        run: |
+          npm install
+          npm install @capacitor/android
 
       - name: Build web assets
         run: npm run build
@@ -41,7 +42,7 @@ jobs:
 
       - name: Build APK
         working-directory: ./android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
@@ -52,11 +53,11 @@ jobs:
 
       - name: Create Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: marvinpinto/action-automatic-releases@latest
+        uses: softprops/action-gh-release@v1
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
+          tag_name: latest
+          name: "S16模拟器 APK (自动构建)"
           prerelease: true
-          title: "S16模拟器 APK (自动构建)"
-          files: |
-            android/app/build/outputs/apk/debug/app-debug.apk
+          files: android/app/build/outputs/apk/debug/app-debug.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
