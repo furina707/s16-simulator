@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>S16 基本运算单元与连续系统模拟</title>
+<style>
+  :root {
+    --board-bg: #1a1a2e;
+    --board-border: #333;
+    --tp-gold: #d4a843;
+    --tp-gold-hover: #f0c860;
+    --text-primary: #e0e0e0;
+    --text-secondary: #aaa;
+    --panel-bg: #16213e;
+    --accent: #0f3460;
+    --opamp-body: #2a2a4a;
+    --opamp-border: #555;
+    --section-bg: rgba(255,255,255,0.03);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+    background: #0a0a1a;
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+    touch-action: manipulation;
+  }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #0f3460, #1a1a2e);
+    padding: 6px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 2px solid #333;
+    flex-shrink: 0;
+    gap: 8px;
+  }
+  .header h1 { font-size: 14px; font-weight: 600; color: var(--tp-gold); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .header .module-id {
+    background: #333; color: var(--tp-gold);
+    padding: 2px 8px; border-radius: 10px;
+    font-size: 11px; font-weight: bold;
+    border: 1px solid var(--tp-gold); flex-shrink: 0;
+  }
+  .header-actions { display: flex; gap: 4px; flex-shrink: 0; }
+  .header-actions button {
+    background: var(--accent); color: #fff;
+    border: 1px solid #444; padding: 4px 8px;
+    border-radius: 4px; cursor: pointer;
+    font-size: 10px; transition: all 0.2s;
+  }
+  .header-actions button:active { background: #1a4a7a; transform: scale(0.95); }
+
+  /* Main Layout */
+  .main-layout { display: flex; flex: 1; overflow: hidden; }
+
+  /* Left Panel */
+  .left-panel {
+    width: 200px; background: var(--panel-bg);
+    border-right: 1px solid #333;
+    overflow-y: auto; flex-shrink: 0; padding: 6px;
+  }
+  .panel-section {
+    margin-bottom: 6px; background: var(--section-bg);
+    border-radius: 6px; padding: 6px;
+    border: 1px solid #2a2a4a;
+  }
+  .panel-section h3 {
+    font-size: 11px; color: var(--tp-gold);
+    margin-bottom: 4px; padding-bottom: 3px;
+    border-bottom: 1px solid #333;
+  }
+  .param-row {
+    display: flex; align-items: center;
+    justify-content: space-between;
+    margin-bottom: 3px; font-size: 10px;
+  }
+  .param-row label { color: var(--text-secondary); min-width: 45px; font-size: 10px; }
+  .param-row input, .param-row select {
+    background: #1a1a2e; border: 1px solid #444;
+    color: #fff; padding: 2px 4px; border-radius: 3px;
+    font-size: 10px; width: 75px;
+  }
+  .param-row input[type="range"] { width: 60px; accent-color: var(--tp-gold); }
+  .param-row .val { color: var(--tp-gold); font-size: 9px; min-width: 38px; text-align: right; }
+
+  /* Board Area */
+  .board-area {
+    flex: 1; position: relative; overflow: hidden;
+    display: flex; align-items: center; justify-content: center;
+    background: radial-gradient(ellipse at center, #111128 0%, #0a0a1a 100%);
+  }
+  .board-container {
+    position: relative; width: 100%; height: 100%;
+    max-width: 880px; max-height: 600px;
+    background: var(--board-bg); border-radius: 10px;
+    border: 3px solid #444;
+    box-shadow: 0 0 40px rgba(0,0,0,0.5), inset 0 0 60px rgba(0,0,0,0.3);
+  }
+
+  /* Board sections */
+  .board-section {
+    position: absolute;
+    border: 1px dashed rgba(255,255,255,0.08);
+    border-radius: 6px; padding: 4px;
+  }
+  .board-section .section-title {
+    font-size: 9px; color: var(--text-secondary);
+    text-align: center; margin-bottom: 2px;
+    letter-spacing: 1px; text-transform: uppercase;
+  }
+
+  /* Op-amp section */
+  .opamp-section {
+    top: 4px; left: 4px; right: 4px; height: 150px;
+    display: flex; justify-content: space-around; align-items: center;
+  }
+  .opamp-unit { position: relative; width: 48%; height: 130px; }
+  .opamp-body {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    width: 70px; height: 55px;
+    background: var(--opamp-body);
+    border: 2px solid var(--opamp-border);
+    clip-path: polygon(0 0, 100% 50%, 0 100%);
+  }
+  .opamp-label {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 10px; color: #666; pointer-events: none;
+  }
+  .opamp-plus, .opamp-minus {
+    position: absolute; font-size: 12px; font-weight: bold;
+    color: #888; pointer-events: none;
+  }
+  .opamp-plus { left: 15px; top: 15px; }
+  .opamp-minus { left: 15px; top: 40px; }
+
+  /* Test Points */
+  .test-point {
+    position: absolute; width: 18px; height: 18px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #f0d060, #b8860b);
+    border: 2px solid #8B6914;
+    cursor: pointer; z-index: 10;
+    transition: transform 0.1s, box-shadow 0.15s;
+  }
+  .test-point:active { transform: scale(1.3); }
+  .test-point:hover {
+    transform: scale(1.3);
+    box-shadow: 0 0 12px rgba(212,168,67,0.7);
+    z-index: 20;
+  }
+  .test-point.connected {
+    box-shadow: 0 0 8px rgba(68,136,255,0.8);
+    border-color: #4488ff;
+  }
+  .test-point.active {
+    animation: tp-pulse 0.7s infinite;
+  }
+  @keyframes tp-pulse {
+    0%, 100% { box-shadow: 0 0 5px rgba(255,68,68,0.5); }
+    50% { box-shadow: 0 0 18px rgba(255,68,68,0.9); }
+  }
+  .tp-label {
+    position: absolute; font-size: 7px;
+    color: #999; white-space: nowrap; pointer-events: none;
+  }
+
+  /* RC Network */
+  .rc-section {
+    top: 160px; left: 4px; right: 200px; height: 180px;
+  }
+  .rc-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr);
+    gap: 2px; padding: 2px;
+  }
+  .rc-component {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 1px;
+  }
+  .rc-component .comp-value {
+    font-size: 8px; color: var(--tp-gold); font-weight: bold;
+  }
+
+  /* Signal Synthesis */
+  .synth-section {
+    top: 160px; right: 4px; width: 190px; height: 180px;
+  }
+  .synth-inputs {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 2px; justify-items: center; margin-bottom: 4px;
+  }
+  .synth-tp-wrap {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 1px;
+  }
+  .synth-tp-wrap .test-point { position: relative; }
+  .synth-tp-wrap .tp-label {
+    position: relative; display: block;
+    text-align: center; margin-top: 1px;
+  }
+
+  /* Power & Cap */
+  .power-section {
+    bottom: 4px; left: 4px; width: 150px; height: 60px;
+    display: flex; justify-content: space-around; align-items: center;
+  }
+  .power-terminal {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 7px; font-weight: bold;
+  }
+  .power-terminal.red { background: radial-gradient(circle at 35% 35%, #ff6666, #cc0000); border: 2px solid #990000; }
+  .power-terminal.yellow { background: radial-gradient(circle at 35% 35%, #ffff66, #cccc00); border: 2px solid #999900; }
+  .power-terminal.blue { background: radial-gradient(circle at 35% 35%, #6666ff, #0000cc); border: 2px solid #000099; }
+  .power-terminal.black { background: radial-gradient(circle at 35% 35%, #666, #222); border: 2px solid #111; }
+
+  .cap-section {
+    bottom: 4px; left: 160px; width: 180px; height: 60px;
+    display: flex; justify-content: space-around; align-items: center;
+  }
+  .cap-item {
+    display: flex; flex-direction: column;
+    align-items: center; gap: 1px;
+  }
+  .cap-item .test-point { position: relative; }
+  .cap-item .tp-label { position: relative; display: block; text-align: center; margin-top: 1px; }
+  .cap-item .cap-val { font-size: 8px; color: var(--tp-gold); }
+
+  /* Signal source badges */
+  .sig-badges {
+    position: absolute; top: 155px; left: 8px;
+    display: flex; gap: 6px;
+  }
+  .sig-badge {
+    background: rgba(0,0,0,0.5); border: 1px solid #333;
+    border-radius: 3px; padding: 2px 5px; font-size: 8px;
+  }
+
+  /* SVG overlay */
+  .wire-svg {
+    position: absolute; top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none; z-index: 5;
+  }
+  .wire-svg path {
+    fill: none; stroke-width: 2.5;
+    stroke-linecap: round;
+    pointer-events: stroke; cursor: pointer;
+  }
+  .wire-svg path:hover { stroke-width: 4; filter: brightness(1.4); }
+
+  /* Right Panel */
+  .right-panel {
+    width: 140px; background: var(--panel-bg);
+    border-left: 1px solid #333;
+    display: flex; flex-direction: column; flex-shrink: 0;
+  }
+  .wave-panel {
+    flex: 1; padding: 6px;
+    display: flex; flex-direction: column; min-height: 0;
+  }
+  .wave-panel h3 {
+    font-size: 11px; color: var(--tp-gold);
+    margin-bottom: 4px; padding-bottom: 3px;
+    border-bottom: 1px solid #333;
+  }
+  .wave-canvas-container {
+    flex: 1; background: #0a0a15;
+    border-radius: 6px; border: 1px solid #333;
+    position: relative; overflow: hidden; min-height: 100px;
+  }
+  .wave-canvas-container canvas { display: block; width: 100% !important; height: 100% !important; }
+  .wave-legend {
+    display: flex; flex-wrap: wrap; gap: 2px; margin-top: 4px;
+  }
+  .wave-legend-item {
+    display: flex; align-items: center; gap: 2px;
+    font-size: 8px; color: var(--text-secondary);
+    cursor: pointer; padding: 2px 4px;
+    border-radius: 3px; background: rgba(255,255,255,0.05);
+    transition: opacity 0.2s;
+  }
+  .wave-legend-item .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .values-panel {
+    height: 150px; border-top: 1px solid #333;
+    padding: 6px; overflow-y: auto; flex-shrink: 0;
+  }
+  .values-panel h3 {
+    font-size: 11px; color: var(--tp-gold); margin-bottom: 4px;
+  }
+  .value-row {
+    display: flex; justify-content: space-between;
+    font-size: 9px; padding: 2px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .value-row .vname { color: var(--text-secondary); }
+  .value-row .vval { color: var(--tp-gold); font-family: monospace; font-size: 9px; }
+
+  /* Status bar */
+  .status-bar {
+    height: 20px; background: #111;
+    border-top: 1px solid #333;
+    display: flex; align-items: center;
+    padding: 0 10px; font-size: 9px;
+    color: var(--text-secondary); gap: 12px; flex-shrink: 0;
+  }
+  .status-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: #44ff44; display: inline-block; margin-right: 3px;
+  }
+
+  /* Help overlay */
+  .help-overlay {
+    position: absolute; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.9); border: 1px solid var(--tp-gold);
+    border-radius: 10px; padding: 16px 20px;
+    z-index: 50; text-align: center;
+    max-width: 90%;
+  }
+  .help-overlay h2 { color: var(--tp-gold); font-size: 14px; margin-bottom: 8px; }
+  .help-overlay p { font-size: 11px; color: #ccc; margin-bottom: 5px; line-height: 1.5; }
+  .help-overlay .key { background: #333; padding: 1px 5px; border-radius: 3px; font-size: 10px; border: 1px solid #555; }
+  .help-overlay button {
+    margin-top: 10px; background: var(--accent); color: #fff;
+    border: 1px solid #444; padding: 5px 16px;
+    border-radius: 4px; cursor: pointer; font-size: 11px;
+  }
+
+  /* Mobile responsiveness */
+  @media (max-width: 768px) {
+    .left-panel { width: 160px; }
+    .right-panel { width: 120px; }
+    .header h1 { font-size: 12px; }
+    .header-actions button { padding: 3px 6px; font-size: 9px; }
+  }
+  @media (max-width: 480px) {
+    .left-panel { width: 130px; }
+    .right-panel { width: 100px; }
+    .values-panel { display: none; }
+  }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>基本运算单元与连续系统模拟</h1>
+  <span class="module-id">S16</span>
+  <div class="header-actions">
+    <button onclick="showHelp()">?</button>
+    <button onclick="clearAllWires()">清除</button>
+    <button onclick="loadPreset('inverting')">反相</button>
+  </div>
+</div>
+
+<div class="main-layout">
+  <!-- Left Panel -->
+  <div class="left-panel">
+    <div class="panel-section">
+      <h3>📡 信号源1</h3>
+      <div class="param-row">
+        <label>波形</label>
+        <select id="sig1-type" onchange="updateSim()">
+          <option value="sine">正弦波</option>
+          <option value="square">方波</option>
+          <option value="triangle">三角波</option>
+          <option value="dc">直流</option>
+        </select>
+      </div>
+      <div class="param-row">
+        <label>频率</label>
+        <input type="range" id="sig1-freq" min="10" max="2000" value="100" oninput="document.getElementById('s1fv').textContent=this.value+'Hz';updateSim()">
+        <span class="val" id="s1fv">100Hz</span>
+      </div>
+      <div class="param-row">
+        <label>幅值</label>
+        <input type="range" id="sig1-amp" min="1" max="50" value="10" oninput="document.getElementById('s1av').textContent=(this.value/10).toFixed(1)+'V';updateSim()">
+        <span class="val" id="s1av">1.0V</span>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>📡 信号源2</h3>
+      <div class="param-row">
+        <label>波形</label>
+        <select id="sig2-type" onchange="updateSim()">
+          <option value="sine">正弦波</option>
+          <option value="square">方波</option>
+          <option value="triangle">三角波</option>
+          <option value="dc">直流</option>
+        </select>
+      </div>
+      <div class="param-row">
+        <label>频率</label>
+        <input type="range" id="sig2-freq" min="10" max="2000" value="250" oninput="document.getElementById('s2fv').textContent=this.value+'Hz';updateSim()">
+        <span class="val" id="s2fv">250Hz</span>
+      </div>
+      <div class="param-row">
+        <label>幅值</label>
+        <input type="range" id="sig2-amp" min="1" max="50" value="5" oninput="document.getElementById('s2av').textContent=(this.value/10).toFixed(1)+'V';updateSim()">
+        <span class="val" id="s2av">0.5V</span>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>⚡ OP1</h3>
+      <div class="param-row">
+        <label>模式</label>
+        <select id="op1-mode" onchange="updateSim()">
+          <option value="inverting">反相</option>
+          <option value="noninverting">同相</option>
+          <option value="integrator">积分</option>
+          <option value="differentiator">微分</option>
+        </select>
+      </div>
+      <div class="param-row">
+        <label>Rf</label>
+        <select id="op1-rf" onchange="updateSim()">
+          <option value="1000">1K</option>
+          <option value="5100">5.1K</option>
+          <option value="10000" selected>10K</option>
+          <option value="20000">20K</option>
+        </select>
+      </div>
+      <div class="param-row">
+        <label>Ri</label>
+        <select id="op1-ri" onchange="updateSim()">
+          <option value="1000" selected>1K</option>
+          <option value="5100">5.1K</option>
+          <option value="10000">10K</option>
+          <option value="20000">20K</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="panel-section">
+      <h3>⚡ OP2</h3>
+      <div class="param-row">
+        <label>模式</label>
+        <select id="op2-mode" onchange="updateSim()">
+          <option value="inverting">反相</option>
+          <option value="noninverting">同相</option>
+          <option value="integrator">积分</option>
+          <option value="differentiator">微分</option>
+        </select>
+      </div>
+      <div class="param-row">
+        <label>Rf</label>
+        <select id="op2-rf" onchange="updateSim()">
+          <option value="1000">1K</option>
+          <option value="5100">5.1K</option>
+          <option value="10000" selected>10K</option>
+          <option value="20000">20K</option>
+        </select>
+      </div>
+      <div class="param-row">
+        <label>Ri</label>
+        <select id="op2-ri" onchange="updateSim()">
+          <option value="1000" selected>1K</option>
+          <option value="5100">5.1K</option>
+          <option value="10000">10K</option>
+          <option value="20000">20K</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Board Area -->
+  <div class="board-area">
+    <div class="board-container" id="board">
+      <svg class="wire-svg" id="wire-svg"></svg>
+
+      <!-- Op-Amp Section -->
+      <div class="board-section opamp-section">
+        <div class="section-title">运算放大器</div>
+        <div class="opamp-unit">
+          <div class="opamp-body"></div>
+          <span class="opamp-plus">+</span>
+          <span class="opamp-minus">−</span>
+          <span class="opamp-label">OP1</span>
+          <div class="test-point" id="tp-TH10" data-tp="TH10" data-group="op1" style="left:5px;top:18px"></div>
+          <span class="tp-label" style="left:26px;top:22px">TH10</span>
+          <div class="test-point" id="tp-TH11" data-tp="TH11" data-group="op1" style="left:5px;top:50px"></div>
+          <span class="tp-label" style="left:26px;top:54px">TH11</span>
+          <div class="test-point" id="tp-TH12" data-tp="TH12" data-group="op1" style="right:5px;top:34px"></div>
+          <span class="tp-label" style="right:26px;top:38px">TH12</span>
+        </div>
+        <div class="opamp-unit">
+          <div class="opamp-body"></div>
+          <span class="opamp-plus">+</span>
+          <span class="opamp-minus">−</span>
+          <span class="opamp-label">OP2</span>
+          <div class="test-point" id="tp-TH13" data-tp="TH13" data-group="op2" style="left:5px;top:18px"></div>
+          <span class="tp-label" style="left:26px;top:22px">TH13</span>
+          <div class="test-point" id="tp-TH14" data-tp="TH14" data-group="op2" style="left:5px;top:50px"></div>
+          <span class="tp-label" style="left:26px;top:54px">TH14</span>
+          <div class="test-point" id="tp-TH15" data-tp="TH15" data-group="op2" style="right:5px;top:34px"></div>
+          <span class="tp-label" style="right:26px;top:38px">TH15</span>
+        </div>
+      </div>
+
+      <!-- Signal source badges -->
+      <div class="sig-badges">
+        <div class="sig-badge"><span style="color:#44ff44">●</span> SIG1</div>
+        <div class="sig-badge"><span style="color:#4488ff">●</span> SIG2</div>
+      </div>
+
+      <!-- RC Network -->
+      <div class="board-section rc-section">
+        <div class="section-title">RC阵列</div>
+        <div class="rc-grid" id="rc-grid"></div>
+      </div>
+
+      <!-- Signal Synthesis -->
+      <div class="board-section synth-section">
+        <div class="section-title">信号合成</div>
+        <div class="synth-inputs" id="synth-inputs"></div>
+        <div style="text-align:center;margin:2px 0">
+          <svg width="50" height="28" viewBox="0 0 70 36">
+            <polygon points="5,2 65,18 5,34" fill="none" stroke="#555" stroke-width="1.5"/>
+            <text x="22" y="22" fill="#888" font-size="11" font-weight="bold">Σ</text>
+          </svg>
+        </div>
+        <div style="display:flex;justify-content:center;gap:16px;margin-top:2px">
+          <div class="synth-tp-wrap">
+            <div class="test-point" id="tp-TH9" data-tp="TH9" data-group="synth"></div>
+            <span class="tp-label">TH9</span>
+          </div>
+          <div class="synth-tp-wrap">
+            <div class="test-point" id="tp-TH16" data-tp="TH16" data-group="synth"></div>
+            <span class="tp-label">TH16</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Power -->
+      <div class="board-section power-section">
+        <div class="section-title">电源</div>
+        <div class="power-terminal red" title="+12V">+12</div>
+        <div class="power-terminal yellow" title="-12V">-12</div>
+        <div class="power-terminal blue" title="GND">GND</div>
+        <div class="power-terminal black" title="GND">GND</div>
+      </div>
+
+      <!-- Capacitors -->
+      <div class="board-section cap-section">
+        <div class="section-title">电容</div>
+        <div id="cap-array" style="display:flex;gap:8px;justify-content:center"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="right-panel">
+    <div class="wave-panel">
+      <h3>📊 波形</h3>
+      <div class="wave-canvas-container" id="wave-container">
+        <canvas id="wave-canvas"></canvas>
+      </div>
+      <div class="wave-legend" id="wave-legend"></div>
+    </div>
+    <div class="values-panel">
+      <h3>📐 测量</h3>
+      <div id="values-content"></div>
+    </div>
+  </div>
+</div>
+
+<div class="status-bar">
+  <span><span class="status-dot" id="status-dot"></span><span id="status-text">仿真运行中</span></span>
+  <span id="status-info">点击测试点连线</span>
+  <span style="margin-left:auto" id="fps-counter">-- FPS</span>
+</div>
+
+<script>
+// ===================== STATE =====================
+const WIRE_COLORS = ['#ff4444','#44ff44','#4488ff','#ffaa00','#ff44ff','#44ffff','#ff8844','#88ff44','#ffff44','#44ffaa'];
+const tpElements = {};
+const connections = [];
+let activeTP = null;
+let tempLine = null;
+let isRunning = true;
+let simTime = 0;
+let lastOp1Out = 0, lastOp2Out = 0, lastSynthOut = 0;
+
+const waveVisible = { sig1: true, sig2: true, op1: true, op2: true, synth: true };
+const waveColors = { sig1: '#44ff44', sig2: '#4488ff', op1: '#ff4444', op2: '#ffaa00', synth: '#ff44ff' };
+const waveNames = { sig1: 'SIG1', sig2: 'SIG2', op1: 'OP1', op2: 'OP2', synth: '合成' };
+const waveData = { sig1: [], sig2: [], op1: [], op2: [], synth: [] };
+const HIST_LEN = 300;
+
+// ===================== INIT =====================
+function init() {
+  buildSynthInputs();
+  buildRCGrid();
+  buildCapArray();
+  buildLegend();
+  buildValues();
+  initTPEvents();
+  initBoardEvents();
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  window.addEventListener('orientationchange', () => setTimeout(resizeCanvas, 100));
+  updateSim();
+  requestAnimationFrame(loop);
+}
+
+function buildSynthInputs() {
+  const c = document.getElementById('synth-inputs');
+  for (let i = 1; i <= 8; i++) {
+    const w = document.createElement('div');
+    w.className = 'synth-tp-wrap';
+    w.innerHTML = `<div class="test-point" id="tp-TH${i}" data-tp="TH${i}" data-group="synth"></div><span class="tp-label">TH${i}</span>`;
+    c.appendChild(w);
+  }
+}
+
+function buildRCGrid() {
+  const g = document.getElementById('rc-grid');
+  const items = [
+    {tp:'TH18',v:'1K'},{tp:'TH19',v:'5.1K'},{tp:'TH20',v:'10K'},{tp:'TH21',v:'20K'},
+    {tp:'TH22',v:'1K'},{tp:'TH23',v:'5.1K'},{tp:'TH24',v:'10K'}
+  ];
+  items.forEach(it => {
+    const d = document.createElement('div');
+    d.className = 'rc-component';
+    d.innerHTML = `<div class="test-point" id="tp-${it.tp}" data-tp="${it.tp}" data-group="rc"></div><span class="tp-label" style="display:block;text-align:center;margin-top:1px">${it.tp}</span><span class="comp-value">${it.v}</span>`;
+    g.appendChild(d);
+  });
+}
+
+function buildCapArray() {
+  const c = document.getElementById('cap-array');
+  [{tp:'TH25',v:'0.01μ'},{tp:'TH26',v:'0.1μ'},{tp:'TH27',v:'1μ'},{tp:'TH28',v:'4.7μ'}].forEach(it => {
+    const d = document.createElement('div');
+    d.className = 'cap-item';
+    d.innerHTML = `<div class="test-point" id="tp-${it.tp}" data-tp="${it.tp}" data-group="cap"></div><span class="tp-label">${it.tp}</span><span class="cap-val">${it.v}</span>`;
+    c.appendChild(d);
+  });
+}
+
+function buildLegend() {
+  const c = document.getElementById('wave-legend');
+  Object.keys(waveColors).forEach(k => {
+    const d = document.createElement('div');
+    d.className = 'wave-legend-item';
+    d.dataset.key = k;
+    d.innerHTML = `<span class="dot" style="background:${waveColors[k]}"></span>${waveNames[k]}`;
+    d.onclick = () => { waveVisible[k] = !waveVisible[k]; d.style.opacity = waveVisible[k] ? 1 : 0.3; };
+    c.appendChild(d);
+  });
+}
+
+function buildValues() {
+  const c = document.getElementById('values-content');
+  const rows = [
+    ['SIG1','v-sig1'],['SIG2','v-sig2'],
+    ['OP1','v-op1'],['OP1增益','v-op1g'],
+    ['OP2','v-op2'],['OP2增益','v-op2g'],
+    ['合成','v-synth'],['连线','v-conns']
+  ];
+  rows.forEach(([name,id]) => {
+    const d = document.createElement('div');
+    d.className = 'value-row';
+    d.innerHTML = `<span class="vname">${name}</span><span class="vval" id="${id}">--</span>`;
+    c.appendChild(d);
+  });
+}
+
+// ===================== TEST POINTS =====================
+function initTPEvents() {
+  document.querySelectorAll('.test-point').forEach(tp => {
+    tpElements[tp.dataset.tp] = tp;
+    tp.addEventListener('mousedown', onTPDown);
+    tp.addEventListener('touchstart', onTPTouch, {passive: false});
+    tp.addEventListener('contextmenu', e => { e.preventDefault(); removeTPConns(tp.dataset.tp); });
+  });
+}
+
+function initBoardEvents() {
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') cancelWire(); });
+}
+
+function onTPDown(e) {
+  if (e.button !== 0) return;
+  e.preventDefault(); e.stopPropagation();
+  handleTPPress(e.currentTarget);
+}
+
+function onTPTouch(e) {
+  e.preventDefault();
+  const touch = e.touches[0];
+  const tp = e.currentTarget;
+  handleTPPress(tp);
+}
+
+function handleTPPress(tp) {
+  if (!activeTP) {
+    activeTP = tp;
+    tp.classList.add('active');
+    setStatus(`已选择 ${tp.dataset.tp}`);
+    const svg = document.getElementById('wire-svg');
+    tempLine = document.createElementNS('http://www.w3.org/2000/svg','path');
+    tempLine.setAttribute('stroke','#ffffff66');
+    tempLine.setAttribute('stroke-width','2');
+    tempLine.setAttribute('stroke-dasharray','6,4');
+    tempLine.setAttribute('fill','none');
+    svg.appendChild(tempLine);
+    document.addEventListener('mousemove', onDocMove);
+    document.addEventListener('mouseup', onDocUp);
+  } else {
+    if (activeTP === tp) { cancelWire(); return; }
+    if (connExists(activeTP.dataset.tp, tp.dataset.tp)) { cancelWire(); return; }
+    makeWire(activeTP, tp);
+    cancelWire();
+  }
+}
+
+function onDocMove(e) {
+  if (!tempLine || !activeTP) return;
+  const r = document.getElementById('board').getBoundingClientRect();
+  const a = tpCenter(activeTP);
+  tempLine.setAttribute('d', bezier(a.x, a.y, e.clientX - r.left, e.clientY - r.top));
+}
+
+function onDocUp() {
+  document.removeEventListener('mousemove', onDocMove);
+  document.removeEventListener('mouseup', onDocUp);
+}
+
+function cancelWire() {
+  if (activeTP) activeTP.classList.remove('active');
+  activeTP = null;
+  if (tempLine) { tempLine.remove(); tempLine = null; }
+  setStatus('点击测试点连线');
+  document.removeEventListener('mousemove', onDocMove);
+  document.removeEventListener('mouseup', onDocUp);
+}
+
+function tpCenter(tp) {
+  const br = document.getElementById('board').getBoundingClientRect();
+  const tr = tp.getBoundingClientRect();
+  return { x: tr.left + tr.width/2 - br.left, y: tr.top + tr.height/2 - br.top };
+}
+
+function bezier(x1,y1,x2,y2) {
+  const dx = Math.abs(x2-x1)*0.45+25;
+  return `M${x1},${y1} C${x1+dx},${y1} ${x2-dx},${y2} ${x2},${y2}`;
+}
+
+function connExists(a, b) {
+  return connections.some(c => (c.from===a&&c.to===b)||(c.from===b&&c.to===a));
+}
+
+function makeWire(tp1, tp2) {
+  const svg = document.getElementById('wire-svg');
+  const color = WIRE_COLORS[connections.length % WIRE_COLORS.length];
+  const c1 = tpCenter(tp1), c2 = tpCenter(tp2);
+  const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+  path.setAttribute('d', bezier(c1.x,c1.y,c2.x,c2.y));
+  path.setAttribute('stroke', color);
+  path.setAttribute('fill','none');
+  path.setAttribute('stroke-width','2.5');
+  path.style.cursor = 'pointer';
+  path.style.pointerEvents = 'stroke';
+  path.addEventListener('click', () => {
+    path.remove();
+    const i = connections.findIndex(c => c.pathEl === path);
+    if (i >= 0) connections.splice(i, 1);
+    refreshConnState();
+    updateSim();
+  });
+  svg.appendChild(path);
+  connections.push({ from: tp1.dataset.tp, to: tp2.dataset.tp, color, pathEl: path });
+  refreshConnState();
+  updateSim();
+}
+
+function removeTPConns(tpName) {
+  for (let i = connections.length-1; i >= 0; i--) {
+    if (connections[i].from === tpName || connections[i].to === tpName) {
+      connections[i].pathEl.remove();
+      connections.splice(i, 1);
+    }
+  }
+  refreshConnState();
+  updateSim();
+}
+
+function refreshConnState() {
+  document.querySelectorAll('.test-point').forEach(t => t.classList.remove('connected'));
+  connections.forEach(c => {
+    if (tpElements[c.from]) tpElements[c.from].classList.add('connected');
+    if (tpElements[c.to]) tpElements[c.to].classList.add('connected');
+  });
+  const el = document.getElementById('v-conns');
+  if (el) el.textContent = connections.length;
+}
+
+function clearAllWires() {
+  connections.forEach(c => c.pathEl.remove());
+  connections.length = 0;
+  refreshConnState();
+  updateSim();
+}
+
+// ===================== SIMULATION =====================
+function sig(type, freq, amp, off, t) {
+  const w = 2 * Math.PI * freq;
+  switch(type) {
+    case 'sine': return amp * Math.sin(w*t) + off;
+    case 'square': return amp * Math.sign(Math.sin(w*t)) + off;
+    case 'triangle': return amp * (2/Math.PI) * Math.asin(Math.sin(w*t)) + off;
+    case 'dc': return amp + off;
+  }
+  return 0;
+}
+
+function sig1P() {
+  return {
+    type: document.getElementById('sig1-type').value,
+    freq: +document.getElementById('sig1-freq').value,
+    amp: +document.getElementById('sig1-amp').value / 10,
+    off: 0
+  };
+}
+function sig2P() {
+  return {
+    type: document.getElementById('sig2-type').value,
+    freq: +document.getElementById('sig2-freq').value,
+    amp: +document.getElementById('sig2-amp').value / 10,
+    off: 0
+  };
+}
+function opCfg(n) {
+  return {
+    mode: document.getElementById(`op${n}-mode`).value,
+    rf: +document.getElementById(`op${n}-rf`).value,
+    ri: +document.getElementById(`op${n}-ri`).value
+  };
+}
+
+function linked(fromTP, toTP) {
+  return connections.some(c => (c.from===fromTP&&c.to===toTP)||(c.from===toTP&&c.to===fromTP));
+}
+
+function signalAt(tpName) {
+  if (tpName === 'TH1') return 'sig1';
+  if (tpName === 'TH2') return 'sig2';
+  if (linked('TH1', tpName)) return 'sig1';
+  if (linked('TH2', tpName)) return 'sig2';
+  if (linked('TH12', tpName)) return 'op1';
+  if (linked('TH15', tpName)) return 'op2';
+  if (linked('TH9', tpName)) return 'synth';
+  if (linked('TH16', tpName)) return 'synth';
+  return null;
+}
+
+function resolveSignal(src, s1, s2) {
+  switch(src) {
+    case 'sig1': return s1;
+    case 'sig2': return s2;
+    case 'op1': return lastOp1Out;
+    case 'op2': return lastOp2Out;
+    case 'synth': return lastSynthOut;
+    default: return 0;
+  }
+}
+
+function opAmpCalc(cfg, input) {
+  const {mode, rf, ri} = cfg;
+  let out;
+  switch(mode) {
+    case 'inverting': out = input * (-rf / ri); break;
+    case 'noninverting': out = input * (1 + rf / ri); break;
+    case 'integrator': out = input * 0.5; break;
+    case 'differentiator': out = input * 0.5; break;
+    default: out = 0;
+  }
+  return Math.max(-12, Math.min(12, out));
+}
+
+function computeAll(t) {
+  const s1p = sig1P(), s2p = sig2P();
+  const o1c = opCfg(1), o2c = opCfg(2);
+  const s1 = sig(s1p.type, s1p.freq, s1p.amp, s1p.off, t);
+  const s2 = sig(s2p.type, s2p.freq, s2p.amp, s2p.off, t);
+
+  let op1src = signalAt('TH10') || signalAt('TH11');
+  const op1in = resolveSignal(op1src, s1, s2);
+  const op1out = opAmpCalc(o1c, op1in);
+
+  let op2src = signalAt('TH13') || signalAt('TH14');
+  const op2in = resolveSignal(op2src, s1, s2);
+  const op2out = opAmpCalc(o2c, op2in);
+
+  let synth = 0;
+  for (let i = 3; i <= 8; i++) {
+    const src = signalAt(`TH${i}`);
+    if (src) synth += resolveSignal(src, s1, s2);
+  }
+
+  lastOp1Out = op1out;
+  lastOp2Out = op2out;
+  lastSynthOut = synth;
+
+  return { s1, s2, op1out, op2out, synth };
+}
+
+function updateSim() {
+  const s1p = sig1P(), s2p = sig2P();
+  const o1c = opCfg(1), o2c = opCfg(2);
+
+  setText('v-sig1', (s1p.amp*2).toFixed(1)+'V');
+  setText('v-sig2', (s2p.amp*2).toFixed(1)+'V');
+
+  const op1has = signalAt('TH10') || signalAt('TH11');
+  if (op1has) {
+    let g = o1c.mode==='inverting' ? -o1c.rf/o1c.ri : (o1c.mode==='noninverting' ? 1+o1c.rf/o1c.ri : 0);
+    setText('v-op1', (Math.abs(g)*s1p.amp*2).toFixed(1)+'V');
+    setText('v-op1g', g.toFixed(1));
+  } else { setText('v-op1','--'); setText('v-op1g','--'); }
+
+  const op2has = signalAt('TH13') || signalAt('TH14');
+  if (op2has) {
+    let g = o2c.mode==='inverting' ? -o2c.rf/o2c.ri : (o2c.mode==='noninverting' ? 1+o2c.rf/o2c.ri : 0);
+    setText('v-op2', (Math.abs(g)*s1p.amp*2).toFixed(1)+'V');
+    setText('v-op2g', g.toFixed(1));
+  } else { setText('v-op2','--'); setText('v-op2g','--'); }
+
+  let synthHas = false;
+  for (let i=3;i<=8;i++) if(signalAt(`TH${i}`)){synthHas=true;break;}
+  setText('v-synth', synthHas ? '活跃' : '--');
+}
+
+function setText(id, val) { const e = document.getElementById(id); if(e) e.textContent = val; }
+function setStatus(msg) { document.getElementById('status-info').textContent = msg; }
+
+// ===================== WAVEFORM =====================
+const canvas = document.getElementById('wave-canvas');
+const ctx = canvas.getContext('2d');
+let canvasW = 0, canvasH = 0;
+
+function resizeCanvas() {
+  const c = document.getElementById('wave-container');
+  const dpr = window.devicePixelRatio || 1;
+  canvasW = c.clientWidth;
+  canvasH = c.clientHeight;
+  if (canvasW <= 0 || canvasH <= 0) return;
+  canvas.width = canvasW * dpr;
+  canvas.height = canvasH * dpr;
+  canvas.style.width = canvasW + 'px';
+  canvas.style.height = canvasH + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+
+function drawWaves() {
+  const w = canvasW;
+  const h = canvasH;
+  if (w <= 0 || h <= 0) return;
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.restore();
+
+  ctx.fillStyle = '#080810';
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = '#1a1a2a';
+  ctx.lineWidth = 0.5;
+  for (let i=1;i<10;i++) { ctx.beginPath(); ctx.moveTo(w*i/10,0); ctx.lineTo(w*i/10,h); ctx.stroke(); }
+  for (let i=1;i<8;i++) { ctx.beginPath(); ctx.moveTo(0,h*i/8); ctx.lineTo(w,h*i/8); ctx.stroke(); }
+
+  ctx.strokeStyle = '#2a2a3a';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(0,h/2); ctx.lineTo(w,h/2); ctx.stroke();
+
+  let mx = 0.5;
+  Object.keys(waveData).forEach(k => {
+    if (!waveVisible[k]) return;
+    waveData[k].forEach(v => { if (Math.abs(v) > mx) mx = Math.abs(v); });
+  });
+  mx = Math.ceil(mx * 1.3 * 10) / 10;
+  if (mx < 0.1) mx = 1;
+
+  ctx.fillStyle = '#444';
+  ctx.font = '8px monospace';
+  ctx.fillText('+'+mx.toFixed(1), 2, 9);
+  ctx.fillText('-'+mx.toFixed(1), 2, h-2);
+
+  Object.keys(waveColors).forEach(k => {
+    if (!waveVisible[k] || waveData[k].length < 2) return;
+    ctx.strokeStyle = waveColors[k];
+    ctx.lineWidth = 1.2;
+    ctx.globalAlpha = 0.85;
+    ctx.beginPath();
+    const d = waveData[k];
+    const maxPts = Math.min(d.length, 150);
+    const skip = Math.max(1, Math.floor(d.length / maxPts));
+    for (let i=0;i<d.length;i+=skip) {
+      const x = (i / HIST_LEN) * w;
+      const y = h/2 - (d[i]/mx)*(h/2-6);
+      if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+  });
+}
+
+// ===================== MAIN LOOP =====================
+let prevT = 0, fCount = 0, fTime = 0;
+
+function loop(ts) {
+  requestAnimationFrame(loop);
+  if (!prevT) prevT = ts;
+  const dt = Math.min((ts - prevT)/1000, 0.05);
+  prevT = ts;
+
+  fCount++; fTime += dt;
+  if (fTime >= 1) {
+    document.getElementById('fps-counter').textContent = fCount + ' FPS';
+    fCount = 0; fTime = 0;
+  }
+
+  if (!isRunning) { drawWaves(); return; }
+
+  simTime += dt;
+  const r = computeAll(simTime);
+
+  waveData.sig1.push(r.s1);
+  waveData.sig2.push(r.s2);
+  waveData.op1.push(r.op1out);
+  waveData.op2.push(r.op2out);
+  waveData.synth.push(r.synth);
+
+  Object.keys(waveData).forEach(k => { if(waveData[k].length > HIST_LEN) waveData[k].shift(); });
+
+  drawWaves();
+}
+
+function toggleRun() {
+  isRunning = !isRunning;
+  document.getElementById('status-text').textContent = isRunning ? '仿真运行中' : '仿真已暂停';
+  document.getElementById('status-dot').style.background = isRunning ? '#44ff44' : '#ff4444';
+}
+
+// ===================== PRESETS =====================
+function loadPreset(name) {
+  clearAllWires();
+  setTimeout(() => {
+    switch(name) {
+      case 'inverting':
+        document.getElementById('op1-mode').value = 'inverting';
+        document.getElementById('op1-rf').value = '10000';
+        document.getElementById('op1-ri').value = '5100';
+        makeWire(tpElements['TH1'], tpElements['TH10']);
+        setStatus('反相放大 增益≈-2');
+        break;
+    }
+    updateSim();
+  }, 50);
+}
+
+// ===================== HELP =====================
+function showHelp() {
+  const existing = document.querySelector('.help-overlay');
+  if (existing) { existing.remove(); return; }
+  const div = document.createElement('div');
+  div.className = 'help-overlay';
+  div.innerHTML = `
+    <h2>使用说明</h2>
+    <p>1. <b>连线</b>：点击测试点，再点击另一个完成连线</p>
+    <p>2. <b>删除</b>：点击连线即可删除</p>
+    <p>3. <b>信号</b>：TH1=源1，TH2=源2</p>
+    <p>4. <b>运放</b>：TH10/TH13为反相输入</p>
+    <button onclick="this.parentElement.remove()">知道了</button>
+  `;
+  document.getElementById('board').appendChild(div);
+}
+
+// ===================== START =====================
+window.addEventListener('load', init);
+</script>
+</body>
+</html>
